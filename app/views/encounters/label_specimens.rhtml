@@ -30,15 +30,15 @@ function updateNextFinish(){
   test_names_with_synonyms = available_tests.map{|test|test.concept_names.reject{|name|name.locale!='en'}}.flatten.map{|test_name|test_name.name}.sort
 # TODO sort this by most commonly used tests
 
-    tests = ["","Finished"] + test_names_with_synonyms
+  tests = ["","Finished"] + test_names_with_synonyms
 
-   options = {
-     :helpText => 'Test Required',
-     :allowFreeText => 'false', 
-     :textCase => "upper",
-     :tt_onLoad => "updateNextFinish()" ,
-     :tt_OnUnload => "if (tstInputTarget.value == 'Finished') {$('value_coded_or_text_#{}').value = ''}" ,
-   } %>
+  options = {
+    :helpText => 'Test Required',
+    :allowFreeText => 'false', 
+    :textCase => "upper",
+    :tt_onLoad => "updateNextFinish()" ,
+    :tt_OnUnload => "if (tstInputTarget.value == 'Finished') {$('value_coded_or_text_#{}').value = ''}" ,
+  } %>
 
   <% 15.times do |iteration| %>
     <% options[:condition] = "tstPageValues[tstCurrentPage] != 'Finished'" if iteration > 0 %>
@@ -52,4 +52,4 @@ function updateNextFinish(){
     <%= submit_tag "Finish" %>    
   <% end %>
 
- </form>
+</form>
