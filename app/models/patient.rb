@@ -248,5 +248,32 @@ class Patient < ActiveRecord::Base
   end
 
 
+  def name
+    self.person.name rescue nil
+  end  
+
+  def given_name
+    self.person.given_name rescue nil
+  end  
+  alias :first_name :given_name
+
+
+  def family_name
+    self.person.family_name rescue nil
+  end
+  alias :last_name :family_name
+
+  def age
+    self.person.age rescue nil
+  end
+
+  def gender
+    self.person.gender rescue nil
+  end
+
+  def birthdate
+    self.person.birthdate rescue nil
+  end
+
 
 end
