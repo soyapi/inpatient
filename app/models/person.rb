@@ -24,6 +24,14 @@ class Person < ActiveRecord::Base
     "#{self.names.first.given_name} #{self.names.first.family_name}" rescue nil
   end  
 
+  def given_name
+    self.names.first.given_name rescue nil
+  end  
+
+  def family_name
+    self.names.first.family_name rescue nil
+  end
+
   def address
     "#{self.addresses.first.city_village}" rescue nil
   end 
