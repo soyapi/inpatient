@@ -21,6 +21,7 @@ class EncountersController < ApplicationController
       Observation.create(observation)
     }
     @patient = Patient.find(params[:encounter][:patient_id])
+    print_and_redirect("/encounter/label/?encounter_id=#{encounter.id}", next_task(@patient))  if encounter.type.name == "LABEL SPECIMENS"
     redirect_to next_task(@patient) 
   end
 

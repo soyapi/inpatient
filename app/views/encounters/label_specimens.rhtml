@@ -43,10 +43,11 @@
     label = "\
     <div class='label'>\
       <span class='labelLine'>\
-        <%= "#{@patient.name} #{DateTime.now.strftime("%d%b%y %H:%M")}" %>\
+        <%= "#{@patient.name} #{@patient.national_id_with_dashes}" %>\
       </span>\
       <span class='labelLine reverse'>"+test_type+"</span>\
-      <span class='labelLine'>||  |||| |  ||||| |  |   |||||   || |  |</span>\
+      <span class='labelLine'> 421249   ||  |||| |  ||||| |  |   |||||   || |  |</span>\
+      <%= "#{DateTime.now.strftime("%d%b%y %H:%M")}" %>\
     </div>\
     "
     return label
