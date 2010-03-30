@@ -224,6 +224,11 @@ class Person < ActiveRecord::Base
   end
 
   def self.create_from_form(params)
+    #return rescue text if remote timed out or creation of patient on remote failed
+    if params.to_s == 'timeout' || params.to_s == 'creationfailed'
+      return params.to_s
+    end
+
     if params.has_key?('person')
       params = params['person']
     end
@@ -287,9 +292,9 @@ class Person < ActiveRecord::Base
   # then pull down the demographics
   def self.find_remote(known_demographics)
 
-    known_demographics.merge!({"_method"=>"put"})
+    # known_demographics.merge!({"_method"=>"put"}) #This is probably necessary when querrying a mateme demographics server
     # Some strange parsing to get the params formatted right for mechanize
-    demographics_params = [CGI.unescape(known_demographics.to_param).split('=')]
+    demographics_params = CGI.unescape(known_demographics.to_param).split('&').map{|elem| elem.split('=')}
 
     # Could probably define this in environment.rb and reuse to improve speed if necessary
     mechanize_browser = WWW::Mechanize.new
@@ -298,9 +303,17 @@ class Person < ActiveRecord::Base
 
     result = demographic_servers.map{|demographic_server, local_port|
 
+      begin
       # Note: we don't use the demographic_server because it is port forwarded to localhost
       output = mechanize_browser.post("http://localhost:#{local_port}/people/demographics", demographics_params).body
 
+       rescue Timeout::Error 
+        return 'timeout'
+      rescue
+        return 'creationfailed'
+      end
+
+      
       output if output and output.match(/person/)
 
     # TODO need better logic here to select the best result or merge them
@@ -322,9 +335,6 @@ class Person < ActiveRecord::Base
   end
 
   def self.create_remote(received_params)
-    #raise known_demographics.to_yaml
-
-    #Format params for BART
      new_params = received_params[:person]
      known_demographics = Hash.new()
      new_params['gender'] == 'F' ? new_params['gender'] = "Female" : new_params['gender'] = "Male"
@@ -364,35 +374,29 @@ class Person < ActiveRecord::Base
                     "identifier"=>"#{new_params[:addresses][:county_district]}"}
                   }
 
-    servers = GlobalProperty.find(:first, :conditions => {:property => "remote_servers.parent"}).property_value.split(/,/) rescue nil
-    return nil if servers.blank?
+    demographics_params = CGI.unescape(known_demographics.to_param).split('&').map{|elem| elem.split('=')}
+    
+    mechanize_browser = WWW::Mechanize.new
 
-    wget_base_command = "wget --quiet --load-cookies=cookie.txt --quiet --cookies=on --keep-session-cookies --save-cookies=cookie.txt"
+    demographic_servers = JSON.parse(GlobalProperty.find_by_property("demographic_server_ips_and_local_port").property_value) rescue []
 
-    login = "mikmck"
-    password = "mike"
-    location = 8
+    result = demographic_servers.map{|demographic_server, local_port|
 
-    post_data = known_demographics
-    post_data["_method"]="put"
+      begin
 
-    local_demographic_lookup_steps = [ 
-      "#{wget_base_command} -O /dev/null --post-data=\"login=#{login}&password=#{password}\" \"http://localhost/session\"",
-      "#{wget_base_command} -O /dev/null --post-data=\"_method=put&location=#{location}\" \"http://localhost/session\"",
-      "#{wget_base_command} -O - --post-data=\"#{post_data.to_param}\" \"http://localhost/patient/create_remote\""
-    ]
-    results = []
-    servers.each{|server|
-      server = 'meduser@' + server unless server.include?('@')
-      #command = "ssh meduser@#{server} '#{local_demographic_lookup_steps.join(";\n")}'"
-      command = "ssh #{server} '#{local_demographic_lookup_steps.join(";\n")}'"
-      output = `#{command}`
-      results.push output if output and output.match(/person/)
-    }
-    result = results.sort{|a,b|b.length <=> a.length}.first
+      output = mechanize_browser.post("http://localhost:#{local_port}/patient/create_remote", demographics_params).body 
+
+      rescue Timeout::Error 
+        return 'timeout'
+      rescue
+        return 'creationfailed'
+      end
+
+      output if output and output.match(/person/)
+
+    }.sort{|a,b|b.length <=> a.length}.first
 
     result ? JSON.parse(result) : nil
-
   end
 
   def phone_numbers

@@ -12,6 +12,11 @@
     function inform() {
       $('infoBar'+tstCurrentPage).innerHTML = "<%= welcome_message %>";
     }
+
+    function hideMessage(){ 
+      document.getElementById('loggedOutMessage').style.display = 'none';
+    }
+
 </script>
 
 <%= error_messages_for 'user' %>
@@ -19,7 +24,7 @@
 <% form_tag session_path do -%>
 
   <label for="login">Barcode</label>
-  <%= text_field_tag(:login_barcode, nil, :helpText => "Scan barcode", :optional => true, :textCase => "lower", :tt_onLoad => "inform(); barcodeId = 'touchscreenInput0';") %><br>
+  <%= text_field_tag(:login_barcode, nil, :helpText => "Scan your login barcode", :optional => true, :textCase => "lower", :tt_onLoad => "inform(); barcodeId = 'touchscreenInput0';") %><br>
 
   <label for="login">Username</label>
   <%= text_field_tag(:login, nil, :helpText => "Enter user name", :textCase => "lower", :tt_onLoad => "inform(); barcodeId = 'touchscreenInput1';", :condition => "$('login_barcode').value == ''") %><br>
@@ -34,3 +39,14 @@
   <p id="p1">Verifying your username and password</p>
   <p id="p2">Please wait......</p>
 </div>
+
+<% if @auto_logged_out %>
+
+<div id='loggedOutMessage' class='messageBar' style='display:block'>
+  You have been logged out <br /> 
+  after 3.5 minutes of inactivity <br />
+  <button onmousedown='hideMessage();'><span>OK</span></button>
+</div> 
+
+<%end%>
+

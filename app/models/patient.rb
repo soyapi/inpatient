@@ -93,34 +93,10 @@ class Patient < ActiveRecord::Base
     label.draw_multi_text("Visit: #{encs.first.encounter_datetime.strftime("%d/%b/%Y %H:%M")} - #{encs.last.encounter_datetime.strftime("%d/%b/%Y %H:%M")}", :font_reverse => true)
     
     enc_names.each{|name|
-      next if name.humanize == "Registration"
-      header = true
-      if name.humanize == 'Diagnosis'
-
+      next if ["Registration", "Admit patient", "Update outcome"].include?(name.humanize)
         for encounter in encs do
-        if encounter.name == name
-        if header
-          label.draw_multi_text("#{name.humanize}: ", :font_reverse => false)
-          label.draw_multi_text("#{encounter.to_print}", :font_reverse => false)
-        else
-          label.draw_multi_text("#{encounter.to_print}", :font_reverse => false)
+          label.draw_multi_text("#{encounter.to_print}", :font_reverse => false) if encounter.name == name
         end
-        header = false
-        end
-      end
-
-      else
-      for encounter in encs do
-        if encounter.name == name
-        if header
-          label.draw_multi_text("#{name.humanize}: #{encounter.to_print}", :font_reverse => false)
-        else
-          label.draw_multi_text("#{encounter.to_print}", :font_reverse => false)
-        end
-        header = false
-        end
-      end
-      end
     }
     label.draw_multi_text("Seen by: #{User.current_user.name rescue ''} at #{GlobalProperty.find_by_property('facility.short_name').property_value rescue ''} #{UserProperty.find_by_property_and_user_id('last_login_location', User.current_user.user_id).property_value rescue ''}", :font_reverse => true)
     label.print(1)
@@ -164,7 +140,7 @@ class Patient < ActiveRecord::Base
 
   def hiv_status
     return 'REACTIVE' if self.arv_number && !self.arv_number.empty?
-     self.encounters.all(:include => [:observations], :conditions => ["encounter.encounter_type = ?", EncounterType.find_by_name("UPDATE HIV STATUS").id]).map{|encounter| 
+    self.encounters.all(:include => [:observations], :conditions => ["encounter.encounter_type = ?", EncounterType.find_by_name("UPDATE HIV STATUS").id]).map{|encounter|
       encounter.observations.active.last(
         :conditions => ["obs.concept_id = ?", ConceptName.find_by_name("HIV STATUS").concept_id])
     }.flatten.compact.last.answer_concept_name.name rescue 'UNKNOWN'
@@ -172,108 +148,108 @@ class Patient < ActiveRecord::Base
   
   def diagnosis_confirmatory_evidence
     (self.encounters.current.all(:include => [:observations], :conditions => ["encounter.encounter_type = ?",  
-      EncounterType.find_by_name("DIAGNOSIS")]).map{|encounter| encounter.observations.active.all()}.flatten.compact - self.current_diagnoses).last rescue nil 
+          EncounterType.find_by_name("DIAGNOSIS")]).map{|encounter| encounter.observations.active.all()}.flatten.compact - self.current_diagnoses).last rescue nil
   end 
   
-   def previous_diagnoses(concept_ids = [ConceptName.find_by_name("OUTPATIENT DIAGNOSIS").concept_id, ConceptName.find_by_name("OUTPATIENT DIAGNOSIS, NON-CODED").concept_id, ConceptName.find_by_name("PRIMARY DIAGNOSIS").concept_id, ConceptName.find_by_name("SECONDARY DIAGNOSIS").concept_id, ConceptName.find_by_name("ADDITIONAL DIAGNOSIS").concept_id])
+  def previous_diagnoses(concept_ids = [ConceptName.find_by_name("OUTPATIENT DIAGNOSIS").concept_id, ConceptName.find_by_name("OUTPATIENT DIAGNOSIS, NON-CODED").concept_id, ConceptName.find_by_name("PRIMARY DIAGNOSIS").concept_id, ConceptName.find_by_name("SECONDARY DIAGNOSIS").concept_id, ConceptName.find_by_name("ADDITIONAL DIAGNOSIS").concept_id])
     self.encounters.all(:include => [:observations]).map{|encounter| 
       encounter.observations.active.all(
         :conditions => ["obs.concept_id IN (?) AND DATE(obs.obs_datetime) < ?", concept_ids, Date.today])
     }.flatten.compact
   end
 
-   def previous_treatments
+  def previous_treatments
     treatment_encounters = encounters.find_by_encounter_type(EncounterType.find_by_name("TREATMENT").id)
 
     self.previous_visits.map{|visit| visit.encounters.all(:include => [:orders]).map{|encounter| 
-       encounter.orders.active.all}}.flatten.compact
+        encounter.orders.active.all}}.flatten.compact
   end
 
-   def current_visit
-     current_visit = self.visits.current.last
-   end
+  def current_visit
+    current_visit = self.visits.current.last
+  end
 
-   def previous_visits
-     previous_visits = self.visits.all - self.visits.current
-   end
+  def previous_visits
+    previous_visits = self.visits.all - self.visits.current
+  end
 
-   def previous_visits_diagnoses(concept_ids = [ConceptName.find_by_name("OUTPATIENT DIAGNOSIS").concept_id, ConceptName.find_by_name("OUTPATIENT DIAGNOSIS, NON-CODED").concept_id, ConceptName.find_by_name("PRIMARY DIAGNOSIS").concept_id, ConceptName.find_by_name("SECONDARY DIAGNOSIS").concept_id, ConceptName.find_by_name("ADDITIONAL DIAGNOSIS").concept_id])
-     self.previous_visits.map{|visit| visit.encounters.active.map{|encounter| 
-      encounter.observations.active.all(
-        :conditions => ["obs.concept_id IN (?)", concept_ids])
-    }}.flatten.compact
-   end
+  def previous_visits_diagnoses(concept_ids = [ConceptName.find_by_name("OUTPATIENT DIAGNOSIS").concept_id, ConceptName.find_by_name("OUTPATIENT DIAGNOSIS, NON-CODED").concept_id, ConceptName.find_by_name("PRIMARY DIAGNOSIS").concept_id, ConceptName.find_by_name("SECONDARY DIAGNOSIS").concept_id, ConceptName.find_by_name("ADDITIONAL DIAGNOSIS").concept_id])
+    self.previous_visits.map{|visit| visit.encounters.active.map{|encounter|
+        encounter.observations.active.all(
+          :conditions => ["obs.concept_id IN (?)", concept_ids])
+      }}.flatten.compact
+  end
 
-   def visit_diagnoses
-     concept_ids = [ConceptName.find_by_name("OUTPATIENT DIAGNOSIS").concept_id, ConceptName.find_by_name("OUTPATIENT DIAGNOSIS, NON-CODED").concept_id, ConceptName.find_by_name("PRIMARY DIAGNOSIS").concept_id, ConceptName.find_by_name("SECONDARY DIAGNOSIS").concept_id, ConceptName.find_by_name("ADDITIONAL DIAGNOSIS").concept_id]
-     visit_hash = Hash.new()
-     self.previous_visits.each{|visit| 
-     visit_hash[visit.visit_id] = visit.encounters.active.map{|encounter| 
-      encounter.observations.active.all(
-        :conditions => ["obs.concept_id IN (?)", concept_ids])
-    }.flatten.compact
-     }
-     return visit_hash
-   end
+  def visit_diagnoses
+    concept_ids = [ConceptName.find_by_name("OUTPATIENT DIAGNOSIS").concept_id, ConceptName.find_by_name("OUTPATIENT DIAGNOSIS, NON-CODED").concept_id, ConceptName.find_by_name("PRIMARY DIAGNOSIS").concept_id, ConceptName.find_by_name("SECONDARY DIAGNOSIS").concept_id, ConceptName.find_by_name("ADDITIONAL DIAGNOSIS").concept_id]
+    visit_hash = Hash.new()
+    self.previous_visits.each{|visit|
+      visit_hash[visit.visit_id] = visit.encounters.active.map{|encounter|
+        encounter.observations.active.all(
+          :conditions => ["obs.concept_id IN (?)", concept_ids])
+      }.flatten.compact
+    }
+    return visit_hash
+  end
 
-   def visit_treatments
-       visit_hash = Hash.new()
+  def visit_treatments
+    visit_hash = Hash.new()
     self.previous_visits.each{|visit| 
-     visit_hash[visit.visit_id] = visit.encounters.all(:include => [:orders]).map{|encounter| 
-       encounter.orders.active.all}.flatten.compact
+      visit_hash[visit.visit_id] = visit.encounters.all(:include => [:orders]).map{|encounter|
+        encounter.orders.active.all}.flatten.compact
     }
     return visit_hash
   end
   def treatment_not_done
     self.current_treatment_encounter.observations.active.all(
-        :conditions => ["obs.concept_id = ?", ConceptName.find_by_name("TREATMENT").concept_id]).last rescue nil
+      :conditions => ["obs.concept_id = ?", ConceptName.find_by_name("TREATMENT").concept_id]).last rescue nil
   end
 
-   def admitted_to_ward
-     self.current_visit.encounters.all(:include => [:observations], :conditions => ["encounter.encounter_type = ?", EncounterType.find_by_name("ADMIT PATIENT").id]).map{|encounter| 
+  def admitted_to_ward
+    self.current_visit.encounters.all(:include => [:observations], :conditions => ["encounter.encounter_type = ?", EncounterType.find_by_name("ADMIT PATIENT").id]).map{|encounter|
       encounter.observations.active.last(
         :conditions => ["obs.concept_id = ?", ConceptName.find_by_name("ADMIT TO WARD").concept_id])
-     }.flatten.compact.last rescue nil
+    }.flatten.compact.last rescue nil
   end
 
-   def last_visit
-     last_visit = self.visits.last
-   end
+  def last_visit
+    last_visit = self.visits.last
+  end
 
-    def hiv_test_date    
-      self.encounters.all(:include => [:observations], :conditions => ["encounter.encounter_type = ?", EncounterType.find_by_name("UPDATE HIV STATUS").id]).map{|encounter| 
+  def hiv_test_date
+    self.encounters.all(:include => [:observations], :conditions => ["encounter.encounter_type = ?", EncounterType.find_by_name("UPDATE HIV STATUS").id]).map{|encounter|
       encounter.observations.active.last(
         :conditions => ["obs.concept_id = ?", ConceptName.find_by_name("HIV TEST DATE").concept_id])
     }.flatten.compact.last.value_datetime.strftime("%d/%b/%Y") rescue 'Unknown'
   end
 
+  def self.remote_art_info(national_id)
+    given_params = {:person => {:patient => { :identifiers => {"National id" => national_id }}}}
 
-  def name
-    self.person.name rescue nil
-  end  
+    national_id_params = CGI.unescape(given_params.to_param).split('&').map{|elem| elem.split('=')}
+   # raise national_id_params.inspect
+    mechanize_browser = Mechanize.new
+    demographic_servers = JSON.parse(GlobalProperty.find_by_property("demographic_server_ips_and_local_port").property_value) rescue []
+    result = demographic_servers.map{|demographic_server, local_port|
+      output = mechanize_browser.post("http://localhost:#{local_port}/people/art_information", national_id_params).body
+      output if output and output.match(/person/)
+    }.sort{|a,b|b.length <=> a.length}.first
 
-  def given_name
-    self.person.given_name rescue nil
-  end  
-  alias :first_name :given_name
-
-
-  def family_name
-    self.person.family_name rescue nil
-  end
-  alias :last_name :family_name
-
-  def age
-    self.person.age rescue nil
+    result ? JSON.parse(result) : nil
   end
 
-  def gender
-    self.person.gender rescue nil
+  # Lets you call person methods on the patient, for example Patient.find(:first).name
+  # Not sure this is a good idea
+  def patient_method_missing(method_called, *args, &block)
+    begin
+      self.person.send(method_called, *args)
+    rescue
+      original_method_missing(method_called, *args, &block)
+    end
   end
 
-  def birthdate
-    self.person.birthdate rescue nil
-  end
+  alias_method :original_method_missing, :method_missing
+  alias_method :method_missing, :patient_method_missing
 
 
 end
