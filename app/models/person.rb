@@ -27,10 +27,12 @@ class Person < ActiveRecord::Base
   def given_name
     self.names.first.given_name rescue nil
   end  
+  alias :first_name :given_name
 
   def family_name
     self.names.first.family_name rescue nil
   end
+  alias :last_name :family_name
 
   def address
     "#{self.addresses.first.city_village}" rescue nil
