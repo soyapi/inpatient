@@ -4,6 +4,7 @@ class Patient < ActiveRecord::Base
   include Openmrs
 
   has_one :person, :foreign_key => :person_id
+  delegate :name, :given_name, :first_name, :family_name, :last_name, :to => :person
   has_many :patient_identifiers, :foreign_key => :patient_id, :dependent => :destroy, :conditions => 'patient_identifier.voided = 0'
   has_many :visits, :dependent => :destroy, :conditions => 'visit.voided = 0' 
   has_many :encounters, :conditions => 'encounter.voided = 0' do 
@@ -237,19 +238,5 @@ class Patient < ActiveRecord::Base
 
     result ? JSON.parse(result) : nil
   end
-
-  # Lets you call person methods on the patient, for example Patient.find(:first).name
-  # Not sure this is a good idea
-  def patient_method_missing(method_called, *args, &block)
-    begin
-      self.person.send(method_called, *args)
-    rescue
-      original_method_missing(method_called, *args, &block)
-    end
-  end
-
-  alias_method :original_method_missing, :method_missing
-  alias_method :method_missing, :patient_method_missing
-
 
 end
