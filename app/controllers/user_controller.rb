@@ -253,7 +253,7 @@ class UserController < ApplicationController
 
   def barcode_label
     print_string = User.find(params[:user_id]). login_barcode rescue (raise "Unable to find User (#{params[:user_id]}) or generate a barcode label for that user")
-    send_data(print_string,:type=>"application/label; charset=utf-8", :stream=> false, :filename=>"#{params[:user_id]}#{rand(10000)}.lbl", :disposition => "inline")
+    send_label(print_string)
   end
 
   def add_update_property

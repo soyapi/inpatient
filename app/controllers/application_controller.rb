@@ -45,6 +45,16 @@ class ApplicationController < ActionController::Base
     render :template => 'print/print', :layout => nil
   end
 
+  def send_label(label_data)
+    send_data(
+      label_data,
+      :type=>"application/label; charset=utf-8", 
+      :stream => false, 
+      :filename => "#{Time.now.to_i}#{rand(100)}.lbl", 
+      :disposition => "inline"
+    )
+  end
+
   def next_discharge_task(patient)
     outcome = patient.current_outcome
 

@@ -114,16 +114,19 @@ class Encounter < ActiveRecord::Base
     end  
   end
 
-  def print_labels_for_specimen
-    label = ZebraPrinter::Label.new(500,165)
-    label.font_size = 3
-    label.font_horizontal_multiplier = 1
-    label.font_vertical_multiplier = 1
-    label.left_margin = 350
-    label.draw_multi_text("#{self.patient.person.name} #{self.encounter_datetime.strftime("%d%b%y %H:%M")}")
-    label.draw_multi_text("#{self.to_s}", :font_reverse => true)
-    label.draw_barcode(50,120,0,1,5,10,20,false,"4242")
-    label.print
+  def label
+    case self.type.name
+    when "LABEL SPECIMENS"
+      label = ZebraPrinter::Label.new(500,165)
+      label.font_size = 3
+      label.font_horizontal_multiplier = 1
+      label.font_vertical_multiplier = 1
+      label.left_margin = 350
+      label.draw_multi_text("#{self.patient.name} #{self.encounter_datetime.strftime("%d%b%y %H:%M")}")
+      label.draw_multi_text("#{self.to_s}", :font_reverse => true)
+      label.draw_barcode(50,120,0,1,5,10,20,false,"4242")
+      label.print
+    end
   end
 
 end

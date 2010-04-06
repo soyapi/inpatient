@@ -14,11 +14,6 @@ class BarcodesController < ApplicationController
     label.left_margin = 50
     label.draw_barcode(50,180,0,1,5,15,120,false,"#{params[:barcode]}")
     label.draw_multi_text("#{(params[:label] || '').delete("'")}") #'
-    data = label.print(1)
-    send_data(data,
-      :type=>"application/label; charset=utf-8", 
-      :stream => false, 
-      :filename => "#{@barcode}#{rand(10000)}.lbl", 
-      :disposition => "inline")
+    send_label(label.print(1))
   end  
 end
