@@ -4,6 +4,7 @@ class Patient < ActiveRecord::Base
   include Openmrs
 
   has_one :person, :foreign_key => :person_id
+  delegate :name, :given_name, :first_name, :family_name, :last_name, :to => :person
   has_many :patient_identifiers, :foreign_key => :patient_id, :dependent => :destroy, :conditions => 'patient_identifier.voided = 0'
   has_many :visits, :dependent => :destroy, :conditions => 'visit.voided = 0' 
   has_many :encounters, :conditions => 'encounter.voided = 0' do 
@@ -230,14 +231,12 @@ class Patient < ActiveRecord::Base
    # raise national_id_params.inspect
     mechanize_browser = Mechanize.new
     demographic_servers = JSON.parse(GlobalProperty.find_by_property("demographic_server_ips_and_local_port").property_value) rescue []
-
-
     result = demographic_servers.map{|demographic_server, local_port|
       output = mechanize_browser.post("http://localhost:#{local_port}/people/art_information", national_id_params).body
       output if output and output.match(/person/)
     }.sort{|a,b|b.length <=> a.length}.first
 
     result ? JSON.parse(result) : nil
-
   end
+
 end

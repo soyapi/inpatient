@@ -21,6 +21,11 @@ class EncountersController < ApplicationController
       Observation.create(observation)
     }
     @patient = Patient.find(params[:encounter][:patient_id])
+
+    if encounter.type.name == "LABEL SPECIMENS"
+      print_and_redirect("/encounters/label/?encounter_id=#{encounter.id}", next_task(@patient))  if encounter.type.name == "LABEL SPECIMENS"
+      return
+    end
     redirect_to next_task(@patient) 
   end
 
@@ -107,7 +112,7 @@ class EncountersController < ApplicationController
     render :template => 'encounters/diagnoses_index', :layout => 'menu'
   end
 
-   def confirmatory_evidence
+  def confirmatory_evidence
     @patient = Patient.find(params[:patient_id] || params[:id] || session[:patient_id]) rescue nil 
     @primary_diagnosis = @patient.current_diagnoses([ConceptName.find_by_name('PRIMARY DIAGNOSIS').concept_id]).last rescue nil
     @requested_test_obs = @patient.current_diagnoses([ConceptName.find_by_name('TEST REQUESTED').concept_id]) rescue []
@@ -122,31 +127,35 @@ class EncountersController < ApplicationController
     redirect_to "/prescriptions/?patient_id=#{@patient.id}" and return if @best_tests.empty? 
 
     render :template => 'encounters/confirmatory_evidence', :layout => 'menu'
-   end
+  end
 
-   def create_observation
-      observation = Hash.new()
+  def create_observation
+    observation = Hash.new()
 
-      observation[:patient_id] = params[:patient_id]
-      observation[:concept_name] = params[:concept_name]
-      observation[:person_id] = params[:person_id] 
-      observation[:obs_datetime] = params[:obs_datetime]
-      observation[:encounter_id] = params[:encounter_id]
-      #observation[:value_coded_or_text] = params[:value_coded_or_text]
-      observation[:value_coded] = Concept.find_by_name(params[:value_coded]).concept_id rescue Concept.find_by_name('UNKNOWN').concept_id
-      observation[:value_text] = params[:value_text]
+    observation[:patient_id] = params[:patient_id]
+    observation[:concept_name] = params[:concept_name]
+    observation[:person_id] = params[:person_id] 
+    observation[:obs_datetime] = params[:obs_datetime]
+    observation[:encounter_id] = params[:encounter_id]
+#observation[:value_coded_or_text] = params[:value_coded_or_text]
+    observation[:value_coded] = Concept.find_by_name(params[:value_coded]).concept_id rescue Concept.find_by_name('UNKNOWN').concept_id
+    observation[:value_text] = params[:value_text]
 
-      Observation.create(observation)
+    Observation.create(observation)
 
-     redirect_to next_discharge_task(Patient.find(params[:patient_id])) 
-   end
+    redirect_to next_discharge_task(Patient.find(params[:patient_id])) 
+  end
 
-   def outcome
-     session[:auto_load_forms] = true
-   end
+  def outcome
+    session[:auto_load_forms] = true
+  end
    
-   def admit_patient
-     session[:auto_load_forms] = true
-   end
+  def admit_patient
+    session[:auto_load_forms] = true
+  end
+
+  def label
+    send_label(Encounter.find(params[:encounter_id]).label)
+  end
 
 end
